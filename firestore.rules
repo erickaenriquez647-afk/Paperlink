@@ -7,7 +7,15 @@ service cloud.firestore {
       allow read: if request.auth != null && (request.auth.uid == uid || me().role == 'admin');
       // anyone can sign up as these four types; 'admin' can only be set by you in the Firebase console
       allow create: if request.auth != null && request.auth.uid == uid
-        && request.resource.data.role in ['customer', 'shop', 'rider', 'affiliate'];
+        && (request.resource.data.role in ['customer', 'shop', 'rider', 'affiliate']
+          // first admin only: allowed while no admin is claimed, and only together with the claim document
+          || (request.resource.data.role == 'admin'
+              && !exists(/databases/$(database)/documents/config/admin)
+              && getAfter(/databases/$(database)/documents/config/admin).data.uid == request.auth.uid));
+    }
+    match /config/{doc} {
+      allow read: if request.auth != null;
+      allow create: if doc == 'admin' && request.auth != null && request.resource.data.uid == request.auth.uid;
     }
     match /shops/{id} {
       allow read: if request.auth != null;

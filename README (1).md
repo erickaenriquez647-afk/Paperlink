@@ -8,8 +8,9 @@ customer, shop, rider or affiliate. Admin accounts are made by you (see step 5).
 2. Build > Authentication > Get started > Sign-in method > enable **Email/Password**.
 3. Firestore > Rules: paste `firestore.rules` > Publish.
 4. Project settings > Your apps > Web (</>) > register app > copy the config into `firebase-config.js`.
-5. Make yourself admin: open `index.html`, create a normal account, then in Firestore > `users` > your document,
-   change `role` to `admin`. Log out and in.
+5. Become admin: right after publishing the rules (before sharing the link), open `index.html`, choose
+   **Create account > Admin**. The first person to do this becomes the admin and the option then closes.
+   Later admins: in Firestore > `users` > their document, change `role` to `admin`.
 
 ## Publish on GitHub Pages
 1. Push this folder to a GitHub repo (`main` branch).

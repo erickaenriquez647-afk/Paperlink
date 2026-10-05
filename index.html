@@ -6,19 +6,19 @@
 <h2>Printing, without the queue.</h2><p class="s">One place to sign in. Your account type decides which screen you get.</p>
 <div class="row" style="margin:8px 0"><button class="btn sm" id="tl">Log in</button><button class="btn sm alt" id="tr">Create account</button></div>
 <div id="msg" class="s" style="color:var(--mg)"></div>
-<div id="regOnly"><label>Account type</label><select id="role"><option value="customer">Customer — I need to print</option><option value="shop">Print shop — I own or run a print shop</option><option value="rider">Rider — I deliver orders</option><option value="affiliate">Affiliate — I refer customers and earn</option></select>
+<div id="regOnly"><label>Account type</label><select id="role"><option value="customer">Customer — I need to print</option><option value="shop">Print shop — I own or run a print shop</option><option value="rider">Rider — I deliver orders</option><option value="admin">Admin — first-time setup only</option><option value="affiliate">Affiliate — I refer customers and earn</option></select>
 <label>Your name</label><input id="name" autocomplete="name">
 <div id="shopF" style="display:none"><label>Shop name</label><input id="shopName"><label>Shop address</label><input id="shopAddr"></div></div>
 <label>Email</label><input id="email" type="email" autocomplete="email">
 <label>Password (6+ characters)</label><input id="pw" type="password" autocomplete="current-password">
 <button class="btn" id="go">Continue</button>
 <p class="s" id="refNote"></p>
-<p class="s">Demo: do not use real personal data. Admin accounts are set up by the owner in Firebase.</p>
+<p class="s">Demo: do not use real personal data. The first person to choose Admin becomes the admin; after that the option is closed.</p>
 </div></main>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
 const $ = (id) => document.getElementById(id);
 const say = (m) => ($("msg").textContent = m);
@@ -47,6 +47,11 @@ if (firebaseConfig.apiKey === "PASTE_HERE") {
       const c = await createUserWithEmailAndPassword(auth, email, pw), uid = c.user.uid, p = { name, email, role };
       if (role === "shop") p.shopId = "S" + uid.slice(0, 8);
       if (role === "affiliate") p.aff = (name.replace(/[^a-z]/gi, "").slice(0, 5).toUpperCase() || "AFF") + Math.floor(10 + Math.random() * 89);
+      if (role === "admin") { // the first admin claims the role once; after that it is closed
+        try { const b = writeBatch(db); b.set(doc(db, "users", uid), p); b.set(doc(db, "config", "admin"), { uid }); await b.commit(); location.replace("admin.html"); }
+        catch (e) { await setDoc(doc(db, "users", uid), { name, email, role: "customer" }); say("An admin already exists, so this account was created as a customer."); }
+        return;
+      }
       await setDoc(doc(db, "users", uid), p);
       if (role === "shop") await setDoc(doc(db, "shops", p.shopId), { id: p.shopId, name: $("shopName").value.trim(), address: $("shopAddr").value.trim(), rate: 0.3, bw: 2, col: 5, open: true, on: true, mode: "commission", jnt: 0, ownerUid: uid });
       if (role === "affiliate") await setDoc(doc(db, "affs", p.aff), { code: p.aff, name, uid });
