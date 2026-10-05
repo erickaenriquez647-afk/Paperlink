@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PaperLink · Sign in</title><link rel="stylesheet" href="paperlink.css"><meta name="theme-color" content="#0e7490"></head><body>
+<header><div class="logo">Paper<i>Link</i><b>.</b></div></header>
+<main style="max-width:460px"><div class="card">
+<h2>Printing, without the queue.</h2><p class="s">One place to sign in. Your account type decides which screen you get.</p>
+<div class="row" style="margin:8px 0"><button class="btn sm" id="tl">Log in</button><button class="btn sm alt" id="tr">Create account</button></div>
+<div id="msg" class="s" style="color:var(--mg)"></div>
+<div id="regOnly"><label>Account type</label><select id="role"><option value="customer">Customer — I need to print</option><option value="shop">Print shop — I own or run a print shop</option><option value="rider">Rider — I deliver orders</option><option value="affiliate">Affiliate — I refer customers and earn</option></select>
+<label>Your name</label><input id="name" autocomplete="name">
+<div id="shopF" style="display:none"><label>Shop name</label><input id="shopName"><label>Shop address</label><input id="shopAddr"></div></div>
+<label>Email</label><input id="email" type="email" autocomplete="email">
+<label>Password (6+ characters)</label><input id="pw" type="password" autocomplete="current-password">
+<button class="btn" id="go">Continue</button>
+<p class="s" id="refNote"></p>
+<p class="s">Demo: do not use real personal data. Admin accounts are set up by the owner in Firebase.</p>
+</div></main>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { firebaseConfig } from "./firebase-config.js";
+const $ = (id) => document.getElementById(id);
+const say = (m) => ($("msg").textContent = m);
+const ref = new URLSearchParams(location.search).get("ref");
+if (ref) { localStorage.setItem("plref", ref.toUpperCase()); $("refNote").textContent = "Referred by " + ref.toUpperCase(); }
+let mode = "login", busy = false;
+function setMode(m) { mode = m; $("regOnly").style.display = m === "register" ? "" : "none"; $("go").textContent = m === "register" ? "Create account" : "Log in"; }
+$("tl").onclick = () => setMode("login"); $("tr").onclick = () => setMode("register");
+$("role").onchange = () => ($("shopF").style.display = $("role").value === "shop" ? "" : "none");
+setMode("login");
+if (firebaseConfig.apiKey === "PASTE_HERE") {
+  say("Firebase is not set up yet (see README). Demo without accounts:");
+  for (const p of ["customer", "shop", "rider", "admin", "affiliate"]) $("msg").insertAdjacentHTML("beforeend", ` <a href="${p}.html">${p}</a>`);
+} else {
+  const app = initializeApp(firebaseConfig), auth = getAuth(app), db = getFirestore(app);
+  const go = async (uid) => { const s = await getDoc(doc(db, "users", uid)); if (s.exists()) location.replace(s.data().role + ".html"); else say("This account has no profile. Create a new account."); };
+  onAuthStateChanged(auth, (u) => { if (u && !busy) go(u.uid); });
+  $("go").onclick = async () => {
+    say(""); busy = true;
+    try {
+      const email = $("email").value.trim(), pw = $("pw").value;
+      if (mode === "login") { const c = await signInWithEmailAndPassword(auth, email, pw); await go(c.user.uid); return; }
+      const name = $("name").value.trim(), role = $("role").value;
+      if (name.length < 2) throw { message: "Enter your name." };
+      if (role === "shop" && (!$("shopName").value.trim() || !$("shopAddr").value.trim())) throw { message: "Enter the shop name and address." };
+      const c = await createUserWithEmailAndPassword(auth, email, pw), uid = c.user.uid, p = { name, email, role };
+      if (role === "shop") p.shopId = "S" + uid.slice(0, 8);
+      if (role === "affiliate") p.aff = (name.replace(/[^a-z]/gi, "").slice(0, 5).toUpperCase() || "AFF") + Math.floor(10 + Math.random() * 89);
+      await setDoc(doc(db, "users", uid), p);
+      if (role === "shop") await setDoc(doc(db, "shops", p.shopId), { id: p.shopId, name: $("shopName").value.trim(), address: $("shopAddr").value.trim(), rate: 0.3, bw: 2, col: 5, open: true, on: true, mode: "commission", jnt: 0, ownerUid: uid });
+      if (role === "affiliate") await setDoc(doc(db, "affs", p.aff), { code: p.aff, name, uid });
+      location.replace(role + ".html");
+    } catch (e) {
+      const m = { "auth/email-already-in-use": "That email is already registered. Use Log in.", "auth/invalid-credential": "Wrong email or password.", "auth/weak-password": "Password must be at least 6 characters.", "auth/invalid-email": "Enter a valid email." };
+      say(m[e.code] || e.message);
+    } finally { busy = false; }
+  };
+}
+</script></body></html>

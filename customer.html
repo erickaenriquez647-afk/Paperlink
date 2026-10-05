@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PaperLink · Customers</title><link rel="stylesheet" href="paperlink.css"><meta name="theme-color" content="#0e7490"></head><body>
+<header><a href="index.html" class="logo" style="text-decoration:none;color:inherit">Paper<i>Link</i><b>.</b></a><nav id="nav"></nav></header>
+<main id="app"></main>
+<script src="core.js"></script>
+<script>
+function customer(){if(!S.shops.length||!shop(S.pre.shop))return'<div class="card"><h2>No print shops yet</h2><p class="s">Print shops that join PaperLink will appear here.</p></div>';const p=S.pre,c=calc(p),paper=p.mat==='Paper',mine=sortQ(S.jobs).reverse();
+const priFull=S.jobs.filter(j=>j.pri&&j.status==='queued'&&j.shop===p.shop).length>=3;
+return`<div class="g2"><div class="card"><h2>Send a print job</h2><p class="s">Upload, pick a shop, then show the code at the counter. No pairing, no USB.</p>
+<label>Nickname (shown on the shop's queue)</label><input value="${p.nick}" oninput="S.pre.nick=this.value">
+<label>Referral code (optional)</label><input value="${p.ref||''}" oninput="S.pre.ref=this.value.toUpperCase()"><label>File</label><input type="file" onchange="S.pre.file=this.files[0]?.name||S.pre.file;draw()"><div class="s">${p.file}</div>
+<div class="g2" style="gap:8px"><div><label>Material</label><select onchange="S.pre.mat=this.value;draw()">${opts(Object.keys(S.MAT).map(k=>[k,k]),p.mat)}</select></div>
+<div><label>${S.MAT[p.mat].u}</label><input type="number" min="1" value="${p.qty}" onchange="S.pre.qty=Math.max(1,+this.value||1);draw()"></div></div>
+${paper?`<label>Colour</label><select onchange="S.pre.col=this.value;draw()">${opts([['bw','Black & white'],['color','Colour']],p.col)}</select>`:''}
+<label>Print shop</label><select onchange="S.pre.shop=this.value;draw()">${opts(S.shops.filter(s=>s.on).map(s=>[s.id,s.name+(s.open?'':' (closed)')]),p.shop)}</select>
+<label>Get it by</label><select onchange="S.pre.mode=this.value;draw()">${opts([['pickup','Pick up'],['delivery','Rider delivery (+₱30)'],['jnt','J&T Express (shop sets fee)']],p.mode)}</select>
+${p.mode==='jnt'?`<label>Delivery address (street, barangay, city, province)</label><input value="${p.addr||''}" oninput="S.pre.addr=this.value"><label>Phone number</label><input value="${p.phone||''}" oninput="S.pre.phone=this.value">`:''}<label class="row"><input type="checkbox" ${p.pri?'checked':''} ${priFull&&!p.pri?'disabled':''} onchange="S.pre.pri=this.checked;draw()"> Priority print (+₱10, max 3 per shop${priFull?' — full now':''})</label>
+<div class="s" style="margin-top:12px">Print ${fmt(c.price)} · App fee ${fmt(c.app)} · Priority ${fmt(c.pri)} · Delivery ${fmt(c.del)}</div>
+<h3>Total ${fmt(c.total)}</h3><button class="btn" ${shop(p.shop).open?'':'disabled'} onclick="submit()">Create code and join queue</button></div>
+<div style="display:grid;gap:16px;align-content:start">
+<div class="card"><h3>Free home printing</h3><p class="s">Send from laptop, phone or tablet to your plugged-in printer. 50 pages a day free.</p>
+<div class="bar"><div style="width:${S.used*2}%"></div></div><div class="s">${S.used} of 50 pages used today</div>
+<div class="row"><select id="dev" style="flex:1">${['Laptop','Phone','Tablet'].map(d=>`<option>${d}</option>`).join('')}</select><button class="btn sm" onclick="home()">Print 10 pages</button></div></div>
+<div class="card"><h3>My orders</h3>${mine.length?mine.map(j=>`<div class="job">${qr(j.code)}<div><b>${j.code}</b> · slot ${j.slot||'pending'} ${j.pri?'<span class="tag p">Priority</span>':''}<br>${j.file} · ${j.qty} ${S.MAT[j.mat].u} · ${shop(j.shop).name}<br><span class="tag">${STAT[j.status]}</span> ${j.mode==='delivery'?'Rider delivery':j.mode==='jnt'?'J&T'+(j.waybill?' · '+(j.handover==='branch'?'branch drop-off':'scheduled pickup')+' · waybill '+j.waybill:''):'Pickup'} · ${fmt(calc(j).total)}</div></div>`).join(''):'<div class="empty">No orders yet. Create your first code on the left.</div>'}</div></div></div>`}
+
+function rc(){const a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';return Array.from({length:6},()=>a[Math.floor(Math.random()*a.length)]).join('')}
+function submit(){const p=S.pre,sh=shop(p.shop);
+if(p.mode==='jnt'){if(!(+sh.jnt>0)){alert('This shop does not offer J&T Express yet.');return}if(!p.addr||!p.phone){alert('Enter your delivery address and phone number.');return}}
+S.jobs.push({id:Date.now(),code:rc(),status:'queued',uid:S.me?S.me.uid:'',...p});draw()}
+function home(){S.used=Math.min(50,S.used+10);draw()}
+
+const page=customer;draw();
+</script><script type="module" src="firebase-sync.js"></script></body></html>

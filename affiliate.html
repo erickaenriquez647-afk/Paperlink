@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PaperLink · Affiliates</title><link rel="stylesheet" href="paperlink.css"><meta name="theme-color" content="#0e7490"></head><body>
+<header><a href="index.html" class="logo" style="text-decoration:none;color:inherit">Paper<i>Link</i><b>.</b></a><nav id="nav"></nav></header>
+<main id="app"></main>
+<script src="core.js"></script>
+<script>
+function affV(){const a=S.affs.find(x=>x.code===S.aff)||S.affs[0],js=S.jobs.filter(j=>j.ref===a.code),e=j=>calc(j).platform*AFF,
+earn=js.filter(j=>j.status==='done').reduce((t,j)=>t+e(j),0),pend=js.filter(j=>j.status!=='done').reduce((t,j)=>t+e(j),0),
+link=location.href.replace(/[^\/]*$/,'')+'index.html?ref='+a.code;
+return`<div class="card"><div class="row"><h2 style="flex:1">${a.name}</h2>${S.me?'':`<select style="width:auto" onchange="S.aff=this.value;draw()">${opts(S.affs.map(x=>[x.code,x.name]),a.code)}</select>`}</div>
+<p class="s">Share your link or code. When someone you refer completes an order, you earn 5% of what PaperLink makes on it.</p>
+<div class="kpis"><div class="kpi"><b>${a.code}</b><span>Your code</span></div><div class="kpi"><b>${js.length}</b><span>Referred orders</span></div><div class="kpi"><b>${fmt(earn)}</b><span>Earned</span></div><div class="kpi"><b>${fmt(pend)}</b><span>Pending</span></div></div>
+<label>Referral link</label><div class="row"><input readonly value="${link}" style="flex:1"><button class="btn sm" onclick="navigator.clipboard&&navigator.clipboard.writeText('${link}')">Copy link</button></div></div>
+<div class="g2">${S.me?'':`<div class="card"><h3>Become an affiliate</h3><p class="s">Students, student orgs and print shop owners can all refer customers.</p><label>Your name</label><input id="an" placeholder="Juan D."><button class="btn" onclick="join()">Get my code</button></div>`}
+<div class="card"><h3>Referred orders</h3><div class="tw">${js.length?`<table><tr><th>Code</th><th>Customer</th><th>Status</th><th>You earn</th></tr>${js.map(j=>`<tr><td>${j.code}</td><td>${j.nick}</td><td>${STAT[j.status]}</td><td>${fmt(e(j))}</td></tr>`).join('')}</table>`:'<div class="empty">No referred orders yet. Share your link to start.</div>'}</div></div></div>`}
+function join(){const n=$('an').value.trim();if(!n)return;const c=n.replace(/[^a-z]/gi,'').slice(0,5).toUpperCase()+(10+Math.floor(Math.random()*89));S.affs.push({code:c,name:n});S.aff=c;draw()}
+
+const _av=affV;affV=function(){if(!(S.affs.find(x=>x.code===S.aff)||S.affs[0]))return'<div class="card empty">Loading your affiliate profile…</div>';return _av()};
+const page=affV;draw();
+</script><script type="module" src="firebase-sync.js"></script></body></html>

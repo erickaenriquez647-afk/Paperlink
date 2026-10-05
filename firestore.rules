@@ -1,0 +1,31 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function me() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+
+    match /users/{uid} {
+      allow read: if request.auth != null && (request.auth.uid == uid || me().role == 'admin');
+      // anyone can sign up as these four types; 'admin' can only be set by you in the Firebase console
+      allow create: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.role in ['customer', 'shop', 'rider', 'affiliate'];
+    }
+    match /shops/{id} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if request.auth != null && (resource.data.ownerUid == request.auth.uid || me().role == 'admin');
+    }
+    match /affs/{code} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+    }
+    match /jobs/{id} {
+      allow read: if request.auth != null && (resource.data.uid == request.auth.uid
+        || me().role in ['rider', 'admin']
+        || (me().role == 'shop' && me().shopId == resource.data.shop)
+        || (me().role == 'affiliate' && me().aff == resource.data.ref));
+      allow create: if request.auth != null && me().role == 'customer' && request.resource.data.uid == request.auth.uid;
+      allow update: if request.auth != null && (me().role in ['rider', 'admin']
+        || (me().role == 'shop' && me().shopId == resource.data.shop));
+    }
+  }
+}

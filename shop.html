@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PaperLink · Print shops</title><link rel="stylesheet" href="paperlink.css"><meta name="theme-color" content="#0e7490"></head><body>
+<header><a href="index.html" class="logo" style="text-decoration:none;color:inherit">Paper<i>Link</i><b>.</b></a><nav id="nav"></nav></header>
+<main id="app"></main>
+<script src="core.js"></script>
+<script>
+function shopV(){const sh=shop(S.shopId),q=sortQ(S.jobs.filter(j=>j.shop===sh.id&&j.status!=='done'&&j.status!=='out'));
+const mine=S.jobs.filter(j=>j.shop===sh.id&&j.status==='done'),earn=mine.reduce((a,j)=>a+calc(j).shopGets,0),comm=mine.reduce((a,j)=>a+calc(j).comm,0);
+return`<div class="card"><div class="row"><h2 style="flex:1">${sh.name}</h2>${S.me?'':`<select style="width:auto" onchange="S.shopId=this.value;draw()">${opts(S.shops.map(s=>[s.id,s.name]),sh.id)}</select>`}</div>
+<div class="kpis" style="margin-top:12px"><div class="kpi"><b>${fmt(earn)}</b><span>Earned</span></div><div class="kpi"><b>${fmt(comm)}</b><span>Commission to PaperLink</span></div><div class="kpi"><b>${q.length}</b><span>In queue</span></div></div></div>
+<div class="g2"><div class="card"><h3>Payment mode</h3>
+<label>How you pay PaperLink</label><select onchange="shop('${sh.id}').mode=this.value;draw()">${opts([['commission','Commission only'],['sub','Subscription (coming soon)']],sh.mode)}</select>
+<p class="s">Commission needs no monthly fee, so a quiet summer costs you nothing.</p>
+<label>Paper commission per page</label><select onchange="shop('${sh.id}').rate=+this.value;draw()">${opts([.1,.2,.3,.4,.5].map(r=>[r,fmt(r)]),sh.rate)}</select>
+<div class="g2" style="gap:8px"><div><label>B&W per page ₱</label><input type="number" step=".25" value="${sh.bw}" onchange="shop('${sh.id}').bw=+this.value;draw()"></div><div><label>Colour per page ₱</label><input type="number" step=".25" value="${sh.col}" onchange="shop('${sh.id}').col=+this.value;draw()"></div></div>
+<label>J&T Express delivery fee ₱ (0 = not offered)</label><input type="number" min="0" value="${sh.jnt||0}" onchange="shop('${sh.id}').jnt=+this.value;draw()"><label class="row"><input type="checkbox" ${sh.open?'checked':''} onchange="shop('${sh.id}').open=this.checked;draw()"> Open for new jobs</label>
+<p class="s" style="margin-top:10px">Other materials (ID, lamination, tarpaulin, T-shirts, binding) pay commission as a percentage of the sale, set by admin.</p></div>
+<div class="card"><h3>Find job by code</h3><div class="row"><input id="fc" placeholder="PL-1001" style="flex:1"><button class="btn sm" onclick="findJob()">Open</button></div><div id="fr" class="s"></div></div></div>
+<div class="card"><h3>Print queue</h3><div class="tw">${q.length?`<table><tr><th>Slot</th><th>Nickname</th><th>File</th><th>Details</th><th>Method</th><th>Status</th><th></th></tr>${q.map(j=>`<tr><td>${j.slot}</td><td>${j.nick}</td><td>${j.file}</td><td>${j.qty} ${S.MAT[j.mat].u}${j.mat==='Paper'?', '+(j.col==='color'?'colour':'B&W'):', '+j.mat}</td><td>${j.mode}</td><td>${j.pri?'<span class="tag p">Priority</span> ':''}<span class="tag">${STAT[j.status]}</span></td><td>${act(j)}</td></tr>`).join('')}</table>`:'<div class="empty">The queue is clear.</div>'}</div></div>`}
+function act(j){if(j.status==='queued')return`<button class="btn sm" onclick="setS(${j.id},'printing')">Print</button>`;
+if(j.status==='printing')return`<button class="btn sm" onclick="setS(${j.id},'ready')">Mark printed</button>`;
+if(j.mode==='pickup')return`<button class="btn sm" onclick="setS(${j.id},'done')">Handed over</button>`;
+if(j.mode==='jnt')return`<select id="h${j.id}" style="width:auto"><option value="branch">Branch drop-off</option><option value="pickup">Scheduled J&T pickup</option></select> <input id="w${j.id}" placeholder="Waybill no." style="width:130px"> <button class="btn sm" onclick="jnt(${j.id})">Hand to J&T</button>`;
+return'<span class="s">Waiting for rider</span>'}
+
+function findJob(){const j=S.jobs.find(x=>x.code===$('fc').value.trim().toUpperCase());
+$('fr').innerHTML=j?`${j.code}: ${j.nick}, ${j.file}, slot ${j.slot}, ${STAT[j.status]}`:'No job with that code. Check the code on the customer\'s screen.'}
+
+function jnt(id){const j=S.jobs.find(x=>x.id===id),w=$('w'+id).value.trim();if(!w){alert('Enter the J&T waybill number first.');return}j.handover=$('h'+id).value;j.waybill=w;j.status='out';draw()}
+const _sv=shopV;shopV=function(){if(!shop(S.shopId))return'<div class="card empty">Loading your shop…</div>';const sh=shop(S.shopId);let ch=0;S.jobs.filter(j=>j.shop===sh.id&&!j.slot).sort((a,b)=>a.id-b.id).forEach(j=>{j.slot=S.jobs.filter(x=>x.shop===sh.id&&x.slot).length%99+1;ch=1});if(ch)save();const js=S.jobs.filter(j=>j.shop===sh.id&&j.mode==='jnt'&&j.status==='out');
+return _sv()+`<div class="card"><h3>J&T Express shipments</h3><div class="tw">${js.length?`<table><tr><th>Code</th><th>Customer</th><th>Phone</th><th>Address</th><th>Handover</th><th>Waybill</th><th></th></tr>${js.map(j=>`<tr><td>${j.code}</td><td>${j.nick}</td><td>${j.phone||''}</td><td>${j.addr||''}</td><td>${j.handover==='branch'?'Branch drop-off':'Scheduled pickup'}</td><td>${j.waybill}</td><td><button class="btn sm" onclick="setS(${j.id},'done')">Mark delivered</button></td></tr>`).join('')}</table>`:'<div class="empty">No parcels with J&T right now.</div>'}</div></div>`};
+const page=shopV;draw();
+</script><script type="module" src="firebase-sync.js"></script></body></html>
